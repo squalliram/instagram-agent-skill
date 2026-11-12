@@ -144,7 +144,7 @@ def analyse(text, cut=TRUNCATE, keywords=None):
 
     if not tags:
         add("TAG PLACEMENT", "PASS", "no tags to place")
-    elif any(re.search(r"(?:^|\s)" + re.escape(t) + r"\b", window) for t in tags):
+    elif set(tags) & set(hashtags(window)):
         add("TAG PLACEMENT", "WARN", "a hashtag is inside the visible window, "
                                      "spending feed space on a label")
     else:

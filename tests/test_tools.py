@@ -108,6 +108,15 @@ class CaptionTests(unittest.TestCase):
         self.assertEqual(caption.hashtags("Dal tonight #हिन्दी #street_food, #ok!"), ["#हिन्दी", "#street_food", "#ok"])
         self.assertEqual(caption.hashtags("no#tag here"), [])
 
+    def test_visible_combining_mark_hashtag_gets_a_placement_warning(self):
+        checks = {c["check"]: c["status"] for c in caption.analyse("Try 3 dishes #हिन्दी")["checks"]}
+        self.assertEqual(checks["TAG PLACEMENT"], "WARN")
+
+    def test_tag_cut_off_by_the_fold_is_not_visible(self):
+        text = "x" * (caption.TRUNCATE - 4) + " #ramenlife"
+        checks = {c["check"]: c["status"] for c in caption.analyse(text)["checks"]}
+        self.assertEqual(checks["TAG PLACEMENT"], "PASS")
+
 
 if __name__ == "__main__":
     unittest.main()
