@@ -69,6 +69,9 @@ SCALE = {"k": 1_000, "m": 1_000_000, "b": 1_000_000_000}
 
 def parse_count(cell):
     """'412,000', '412k', '1.2M' as Instagram shows them -> an int, else None."""
+    # A comma decimal disambiguates grouped dots from decimal dots (1.234M).
+    cell = re.sub(r"(?<![\d.])\d{1,3}(?:\.\d{3})+(?=,\d{1,2}\s*[kmb]\b)",
+                  lambda m: m.group().replace(".", ""), cell or "", flags=re.IGNORECASE)
     cell = re.sub(r"(\d),(\d{1,2})(?=\s*[kmb]\b)", r"\1.\2", cell or "", flags=re.IGNORECASE)
     m = COUNT_RE.search(re.sub(r"(?<=\d)[,\s\u00a0\u202f](?=\d)", "", cell))
     if not m:

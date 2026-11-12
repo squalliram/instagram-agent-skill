@@ -59,6 +59,14 @@ class SwipeTests(unittest.TestCase):
         self.assertEqual(swipe.parse_count("1,200K"), 1_200_000)
         self.assertIsNone(swipe.parse_count(""))
 
+    def test_dot_grouping_before_comma_decimals(self):
+        for cell, expected in (("1.234,5K", 1_234_500),
+                               ("12.345,67 m", 12_345_670_000),
+                               ("1.234.567,89K", 1_234_567_890),
+                               ("1.234M", 1_234_000)):
+            with self.subTest(cell=cell):
+                self.assertEqual(swipe.parse_count(cell), expected)
+
     def test_outlier_uses_scaled_counts(self):
         with tempfile.TemporaryDirectory() as tmp:
             tsv = Path(tmp, "captured.tsv")
