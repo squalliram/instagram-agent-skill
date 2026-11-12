@@ -63,6 +63,18 @@ def classify(hook, formulas):
     return None, "unclassified"
 
 
+COUNT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*([kmb])?\b", re.IGNORECASE)
+SCALE = {"k": 1_000, "m": 1_000_000, "b": 1_000_000_000}
+
+
+def parse_count(cell):
+    """'412,000', '412k', '1.2M' as Instagram shows them -> an int, else None."""
+    m = COUNT_RE.search((cell or "").replace(",", ""))
+    if not m:
+        return None
+    return round(float(m.group(1)) * SCALE.get((m.group(2) or "").lower(), 1))
+
+
 def read_rows(path):
     raw = sys.stdin.read() if path == "-" else open(path, encoding="utf-8").read()
     lines = [l for l in raw.splitlines() if l.strip() and not l.lstrip().startswith("#")]
@@ -79,13 +91,9 @@ def read_rows(path):
         if len(cells) < len(cols):
             cells += [""] * (len(cols) - len(cells))
         r = dict(zip(cols, [c.strip() for c in cells]))
-        try:
-            r["views"] = int(re.sub(r"[^\d]", "", r.get("views", "")) or 0)
-        except ValueError:
-            continue
+        r["views"] = parse_count(r.get("views")) or 0
         for k in ("followers", "median"):
-            digits = re.sub(r"[^\d]", "", r.get(k, "") or "")
-            r[k] = int(digits) if digits else None
+            r[k] = parse_count(r.get(k))
         if r["views"] and r.get("hook"):
             rows.append(r)
     return rows
@@ -197,7 +205,8 @@ def main():
         render(a)
     if args.out:
         path = os.path.expanduser(args.out)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        if os.path.dirname(path):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
         open(path, "w", encoding="utf-8").write(to_markdown(a))
         print(f"wrote {path}", file=sys.stderr)
 
