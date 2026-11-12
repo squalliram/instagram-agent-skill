@@ -57,6 +57,8 @@ class SwipeTests(unittest.TestCase):
         self.assertEqual(swipe.parse_count("412\u00a0000"), 412_000)
         self.assertEqual(swipe.parse_count("1,2M"), 1_200_000)
         self.assertEqual(swipe.parse_count("1,200K"), 1_200_000)
+        self.assertEqual(swipe.parse_count("412.000"), 412_000)
+        self.assertEqual(swipe.parse_count("1.200.000"), 1_200_000)
         self.assertIsNone(swipe.parse_count(""))
 
     def test_dot_grouping_before_comma_decimals(self):

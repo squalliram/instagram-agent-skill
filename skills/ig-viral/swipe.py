@@ -63,20 +63,26 @@ def classify(hook, formulas):
     return None, "unclassified"
 
 
-COUNT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*([kmb])?\b", re.IGNORECASE)
+COUNT_RE = re.compile(r"(\d+(?:\.\d+)*)\s*([kmb])?\b", re.IGNORECASE)
 SCALE = {"k": 1_000, "m": 1_000_000, "b": 1_000_000_000}
 
 
 def parse_count(cell):
-    """'412,000', '412k', '1.2M' as Instagram shows them -> an int, else None."""
+    """'412,000', '412.000', '412k', '1.2M' as Instagram shows them -> an int,
+    else None. Only a K/M/B count has a decimal part; a bare one is grouped."""
     # A comma decimal disambiguates grouped dots from decimal dots (1.234M).
     cell = re.sub(r"(?<![\d.])\d{1,3}(?:\.\d{3})+(?=,\d{1,2}\s*[kmb]\b)",
                   lambda m: m.group().replace(".", ""), cell or "", flags=re.IGNORECASE)
-    cell = re.sub(r"(\d),(\d{1,2})(?=\s*[kmb]\b)", r"\1.\2", cell or "", flags=re.IGNORECASE)
+    cell = re.sub(r"(\d),(\d{1,2})(?=\s*[kmb]\b)", r"\1.\2", cell, flags=re.IGNORECASE)
     m = COUNT_RE.search(re.sub(r"(?<=\d)[,\s\u00a0\u202f](?=\d)", "", cell))
     if not m:
         return None
-    return round(float(m.group(1)) * SCALE.get((m.group(2) or "").lower(), 1))
+    number, suffix = m.group(1), m.group(2)
+    if not suffix:
+        return int(number.replace(".", ""))
+    if number.count(".") > 1:
+        number = number.replace(".", "")
+    return round(float(number) * SCALE[suffix.lower()])
 
 
 def read_rows(path):
