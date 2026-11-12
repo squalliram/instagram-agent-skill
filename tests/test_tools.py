@@ -53,6 +53,8 @@ class SwipeTests(unittest.TestCase):
         self.assertEqual(swipe.parse_count("11K"), 11_000)
         self.assertEqual(swipe.parse_count("412,000"), 412_000)
         self.assertEqual(swipe.parse_count("48k followers"), 48_000)
+        self.assertEqual(swipe.parse_count("412 000"), 412_000)
+        self.assertEqual(swipe.parse_count("412\u00a0000"), 412_000)
         self.assertIsNone(swipe.parse_count(""))
 
     def test_outlier_uses_scaled_counts(self):

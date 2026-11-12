@@ -69,7 +69,7 @@ SCALE = {"k": 1_000, "m": 1_000_000, "b": 1_000_000_000}
 
 def parse_count(cell):
     """'412,000', '412k', '1.2M' as Instagram shows them -> an int, else None."""
-    m = COUNT_RE.search((cell or "").replace(",", ""))
+    m = COUNT_RE.search(re.sub(r"(?<=\d)[,\s\u00a0\u202f](?=\d)", "", cell or ""))
     if not m:
         return None
     return round(float(m.group(1)) * SCALE.get((m.group(2) or "").lower(), 1))
