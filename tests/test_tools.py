@@ -55,6 +55,8 @@ class SwipeTests(unittest.TestCase):
         self.assertEqual(swipe.parse_count("48k followers"), 48_000)
         self.assertEqual(swipe.parse_count("412 000"), 412_000)
         self.assertEqual(swipe.parse_count("412\u00a0000"), 412_000)
+        self.assertEqual(swipe.parse_count("1,2M"), 1_200_000)
+        self.assertEqual(swipe.parse_count("1,200K"), 1_200_000)
         self.assertIsNone(swipe.parse_count(""))
 
     def test_outlier_uses_scaled_counts(self):
@@ -100,7 +102,11 @@ class HookscoreTests(unittest.TestCase):
 class CaptionTests(unittest.TestCase):
     def test_non_ascii_hashtags_count_toward_the_limit(self):
         text = "Ramen night.\n\n#ラーメン #東京グルメ #麺スタグラム #café #食べ歩き #グルメ"
-        self.assertEqual(len(caption.HASHTAG_RE.findall(text)), 6)
+        self.assertEqual(len(caption.hashtags(text)), 6)
+
+    def test_hashtags_keep_their_combining_marks(self):
+        self.assertEqual(caption.hashtags("Dal tonight #हिन्दी #street_food, #ok!"), ["#हिन्दी", "#street_food", "#ok"])
+        self.assertEqual(caption.hashtags("no#tag here"), [])
 
 
 if __name__ == "__main__":
