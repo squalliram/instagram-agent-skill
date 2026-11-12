@@ -12,7 +12,9 @@ It does not call their APIs and it cannot promise their verdict. It catches
 the things they all key on, which is why fixing them tends to move their
 numbers too - but the only honest claim is the one on this line.
 
-Each check returns a HUMAN score from 0 to 100. Higher is better.
+Each check returns a HUMAN score from 0 to 100. Higher is better. A check
+that needs more text than a short comment or reply has returns no score, and
+the verdict is taken from the checks that could run.
 
 Usage
   python3 detect.py draft.txt
@@ -63,7 +65,7 @@ def check_burstiness(text):
     """Humans vary sentence length hard. Models write even."""
     lens = [len(s.split()) for s in sentences(text)]
     if len(lens) < 4:
-        return 50.0, "too short to judge"
+        return None, "too short to judge, not scored"
     mean = statistics.mean(lens)
     cv = statistics.pstdev(lens) / mean if mean else 0
     score = scale(cv, human=0.70, machine=0.22)
@@ -74,7 +76,7 @@ def check_specificity(text):
     """Numbers, names and concrete nouns. Slop is abstract."""
     w = words(text)
     if len(w) < 25:
-        return 50.0, "too short to judge"
+        return None, "too short to judge, not scored"
     per100 = 100 / len(w)
     hits = len(NUMBERS.findall(text)) + len(set(PROPER.findall(text)))
     density = hits * per100
@@ -122,7 +124,7 @@ def check_voice(text, lex):
     """Contractions, person, and the shapes models default to."""
     w = words(text)
     if len(w) < 25:
-        return 50.0, "too short to judge"
+        return None, "too short to judge, not scored"
     per100 = 100 / len(w)
     contractions = len(CONTRACTIONS.findall(text)) * per100
     person = len(PRONOUNS.findall(text)) * per100
@@ -161,7 +163,7 @@ def run(text, lex):
     results["SLOP DENSITY"] = check_slop(text, lex)
     results["FINGERPRINT"] = check_fingerprint(text)
     results["VOICE"] = check_voice(text, lex)
-    scores = [results[c][0] for c in CHECKS]
+    scores = [results[c][0] for c in CHECKS if results[c][0] is not None]
     # The weakest check drags the verdict: a detector only needs one signal.
     overall = statistics.mean(scores) * 0.6 + min(scores) * 0.4
     verdict = "PASS" if overall >= 70 and min(scores) >= 55 else (
@@ -170,6 +172,8 @@ def run(text, lex):
 
 
 def bar(score, width=24):
+    if score is None:
+        return "-" * width
     filled = round(score / 100 * width)
     return "#" * filled + "." * (width - filled)
 
@@ -180,12 +184,13 @@ def render(results, overall, verdict, label=None, out=sys.stdout):
     print("=" * max(len(title), 62), file=out)
     for name in CHECKS:
         score, detail = results[name]
-        print(f"  {name:<13} {bar(score)} {score:5.1f}", file=out)
+        shown = "  n/a" if score is None else f"{score:5.1f}"
+        print(f"  {name:<13} {bar(score)} {shown}", file=out)
         print(f"  {'':<13} {detail}", file=out)
     print("-" * 62, file=out)
     print(f"  {'HUMAN SCORE':<13} {bar(overall)} {overall:5.1f}   {verdict}", file=out)
     if verdict != "PASS":
-        weakest = min(CHECKS, key=lambda c: results[c][0])
+        weakest = min((c for c in CHECKS if results[c][0] is not None), key=lambda c: results[c][0])
         print(f"\n  Weakest signal: {weakest}. Fix that first.", file=out)
     print("", file=out)
 
@@ -210,7 +215,8 @@ def main():
         results, overall, verdict = run(text, lex)
         payload.append({
             "source": name,
-            "checks": {k: {"score": round(v[0], 1), "detail": v[1]} for k, v in results.items()},
+            "checks": {k: {"score": None if v[0] is None else round(v[0], 1), "detail": v[1]}
+                       for k, v in results.items()},
             "human_score": round(overall, 1),
             "verdict": verdict,
         })
