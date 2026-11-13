@@ -26,6 +26,7 @@ import json
 import re
 import sys
 import textwrap
+import unicodedata
 
 LIMIT = 2200             # Instagram's hard caption limit.
 TRUNCATE = 125           # Roughly where the feed cuts to "... more".
@@ -35,7 +36,6 @@ HASHTAG_LIMIT = 5        # Instagram's cap per post or reel since 18 Dec 2025,
                          # rather than many generic ones, can improve both your
                          # content's performance and people's experience".
 
-HASHTAG_RE = re.compile(r"(?:^|\s)(#[A-Za-z0-9_]+)")
 MENTION_RE = re.compile(r"(?:^|\s)(@[A-Za-z0-9_.]+)")
 LINK_RE = re.compile(r"https?://\S+|\bwww\.\S+|\b[a-z0-9-]+\.(?:com|co|io|net|org|ai|app)/\S*",
                      re.IGNORECASE)
@@ -56,6 +56,19 @@ ASKS = [
 FILLER_TAGS = {"#viral", "#fyp", "#explore", "#explorepage", "#foryou", "#foryoupage",
                "#trending", "#instagood", "#love", "#follow", "#like4like", "#reels",
                "#reelsinstagram", "#viralreels", "#instadaily"}
+
+
+def hashtags(text):
+    """Tags as Instagram reads them: letters, digits, underscores and the
+    combining marks some scripts need (#हिन्दी is one tag, not #ह)."""
+    tags = []
+    for m in re.finditer(r"(?:^|(?<=\s))#", text):
+        end = m.end()
+        while end < len(text) and (text[end] == "_" or unicodedata.category(text[end])[0] in "LNM"):
+            end += 1
+        if end > m.end():
+            tags.append(text[m.start():end])
+    return tags
 
 
 def visible_window(text, cut):
@@ -82,7 +95,7 @@ def analyse(text, cut=TRUNCATE, keywords=None):
     chars = len(stripped)
     lines = [l for l in stripped.split("\n")]
     first_line = lines[0].strip() if lines else ""
-    tags = HASHTAG_RE.findall(stripped)
+    tags = hashtags(stripped)
     mentions = MENTION_RE.findall(stripped)
     links = LINK_RE.findall(stripped)
     emoji = EMOJI_RE.findall(stripped)
@@ -131,7 +144,7 @@ def analyse(text, cut=TRUNCATE, keywords=None):
 
     if not tags:
         add("TAG PLACEMENT", "PASS", "no tags to place")
-    elif any(re.search(r"(?:^|\s)" + re.escape(t) + r"\b", window) for t in tags):
+    elif set(tags) & set(hashtags(window)):
         add("TAG PLACEMENT", "WARN", "a hashtag is inside the visible window, "
                                      "spending feed space on a label")
     else:

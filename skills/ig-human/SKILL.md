@@ -88,7 +88,8 @@ PASS, and it is the part a script cannot do.
 
 The verdict weights the mean at 60% and the **weakest single check** at 40%,
 because one signal is enough. PASS needs an overall of 70+ with no check
-below 55.
+below 55. On a short comment or reply, BURSTINESS, SPECIFICITY and VOICE have
+too little text to judge: they show n/a and the verdict comes from the rest.
 
 ## Say this honestly
 
